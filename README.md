@@ -115,8 +115,6 @@ Matching Teleport roles to the client_id (see code for details)
 
 If traits.policy is present, it is used directly.
 
-Only the first matching policy is used if multiple are present.
-
 ### 6. Security Notes
 Tokens are short-lived (1 hour) and stored in-memory only during exchange.
 
