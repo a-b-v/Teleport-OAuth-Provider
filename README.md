@@ -45,7 +45,7 @@ docker run -p 8080:80 \
   -e BRIDGE_ISSUER="http://oidc-bridge.internal" \
   -e TELEPORT_JWKS_URL="https://teleport.example.com/v1/webapi/oidc/jwks" \
   -e TELEPORT_ISSUER="https://teleport.example.com:443" \
-  -e TELEPORT_AUD="minio-app" \
+  -e TELEPORT_AUD="http://oidc-bridge.internal" \
   -v $(pwd)/idp-private.pem:/srv/idp-private.pem \
   abvabv/teleport-oidc-bridge:1.0.1
 ```
