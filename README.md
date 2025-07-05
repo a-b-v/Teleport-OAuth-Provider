@@ -1,4 +1,4 @@
-i# Teleport‑to‑OIDC Bridge
+# Teleport‑to‑OIDC Bridge
 
 A FastAPI-based OAuth 2.0 / OIDC provider that **authenticates users via Gravitational Teleport** and issues JWT tokens with user roles and policies for downstream applications. This project allows seamless Single Sign-On (SSO): once a user logs in to Teleport, they can access protected applications behind the bridge _without re-entering credentials_.  
 Roles and policies are directly derived from Teleport, making the bridge ideal for integrating with MinIO or any OIDC-compatible service.
@@ -37,20 +37,17 @@ v                                        |
 
 ## Quickstart
 
-### 1. Build and Run with Docker
+### 1. Run with Docker
 
 ```bash
-# Build image
-docker build -t teleport-oidc-bridge .
-
 # Run the bridge (adjust env vars as needed)
 docker run -p 8080:80 \
-  -e BRIDGE_ISSUER="https://oidc-bridge.internal" \
+  -e BRIDGE_ISSUER="http://oidc-bridge.internal" \
   -e TELEPORT_JWKS_URL="https://teleport.example.com/v1/webapi/oidc/jwks" \
   -e TELEPORT_ISSUER="https://teleport.example.com:443" \
   -e TELEPORT_AUD="minio-app" \
   -v $(pwd)/idp-private.pem:/srv/idp-private.pem \
-  teleport-oidc-bridge
+  abvabv/teleport-oidc-bridge:1.0.1
 ```
 
 ### 2. Environment Variables

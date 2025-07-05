@@ -4,7 +4,6 @@
 FROM python:3.11-slim AS builder
 WORKDIR /build
 
-# You can pin exact versions here if you like
 RUN pip install --no-cache-dir \
         fastapi \
         uvicorn[standard] \
@@ -24,14 +23,12 @@ ENV PYTHONUNBUFFERED=1 \
     # default listening port
     BRIDGE_PORT=80
 
-# Copy the installed site‑packages in one layer
 COPY --from=builder /usr/local/lib/python3.11 /usr/local/lib/python3.11
 COPY --from=builder /usr/local/bin /usr/local/bin
 
-# Copy your application code & key material
 WORKDIR /srv
 COPY bridge_idp.py .
-COPY idp-private.pem .
+#COPY idp-private.pem .
 
 EXPOSE ${BRIDGE_PORT}
 

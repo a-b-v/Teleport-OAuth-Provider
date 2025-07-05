@@ -270,7 +270,7 @@ async def token(
             if expected != data["cc_hash"]:
                 raise HTTPException(400, "PKCE check failed")
 
-        # ──────────────  NEW: derive MinIO/STS policy from Teleport roles  ──────────────
+        # ──────────────  derive MinIO/STS policy/ies from Teleport roles  ──────────────
         teleport_roles: list[str] = []
         # 1️⃣  roles / role (plural & singular)
         if "roles" in data["claims"]:
@@ -281,7 +281,11 @@ async def token(
         # 2️⃣  traits.policy (already the desired value)
         traits = data["claims"].get("traits", {})
         if isinstance(traits, dict) and "policy" in traits:
-            selected_policy = traits["policy"]
+            # traits.policy may be a string or a list → normalise to list[str]
+            if isinstance(traits["policy"], (list, tuple)):
+                selected_policies: list[str] = list(traits["policy"])
+            else:
+                selected_policies = [traits["policy"]]
         else:
             # Normalise to list
             if not isinstance(teleport_roles, (list, tuple)):
@@ -302,17 +306,9 @@ async def token(
                 matching_policies.append(m.group(1) or role_name)
 
             if matching_policies:
-                if len(matching_policies) > 1:
-                    log.warning(
-                        "User '%s' has multiple matching policies for client_id "
-                        "'%s': %s – using the first one",
-                        data["claims"].get("sub"),
-                        client_id,
-                        matching_policies,
-                    )
-                selected_policy = matching_policies[0]
+                selected_policies = matching_policies
             else:
-                selected_policy = None
+                selected_policies = []
                 log.info(
                     "No Teleport role matches client_id '%s'; issuing JWT with no "
                     "policy claim (sub=%s)",
@@ -333,9 +329,9 @@ async def token(
             "nonce": data["nonce"],
         }
 
-        # Inject the policy claim only if we discovered one
-        if selected_policy:
-            id_token_claims["policy"] = selected_policy
+        # Inject the policies claimD only if we discovered at least one
+        if selected_policies:
+            id_token_claims["policy"] = selected_policies
 
         id_token = jwt.encode(
             id_token_claims,
@@ -407,7 +403,7 @@ async def userinfo(
             algorithms=["RS256"],
             issuer=BRIDGE_ISS,        # same constant you used when issuing
             options={
-                "verify_aud": False   # GitLab’s access‑token is audience=gitlab
+                "verify_aud": False
             },
         )
         if DEBUG:
