@@ -50,7 +50,19 @@ docker run -p 8080:80 \
   abvabv/teleport-oidc-bridge:1.0.1
 ```
 
-### 2. Environment Variables
+### 2 Teleport Configuration: Add Authorization Header
+
+In your **Teleport configuration**, make sure to add the `Authorization` header to requests forwarded to the OIDC bridge:
+
+```yaml
+rewrite:
+  headers:
+    - "Authorization: Bearer {{internal.jwt}}"
+```
+
+This ensures that Teleport includes a valid JWT token when communicating with the OIDC bridge.
+
+### 3. Environment Variables
 
 ```
 ## Environment Variables
@@ -72,7 +84,7 @@ docker run -p 8080:80 \
 
 ```
 
-### 3. Authorization Code Flow
+### 4. Authorization Code Flow
 1. Authorize Endpoint
 Client app redirects user to /authorize, providing:
 client_id, redirect_uri, state, etc.
@@ -85,7 +97,7 @@ Client exchanges code for tokens via /token.
 3. Userinfo Endpoint
 Applications can retrieve user claims (including policy) via /userinfo.
 
-### 4. API Endpoints
+### 5. API Endpoints
 1. OIDC Discovery
 GET /.well-known/openid-configuration
 Returns OIDC provider metadata.
@@ -106,7 +118,7 @@ Exchange authorization code for tokens.
 GET/POST /userinfo
 Returns user claims extracted from the JWT.
 
-### 5. Teleport Roles → Policy Extraction
+### 6. Teleport Roles → Policy Extraction
 Roles and traits are extracted directly from Teleport’s JWT.
 
 Policy claim is derived by:
@@ -115,14 +127,14 @@ Matching Teleport roles to the client_id (see code for details)
 
 If traits.policy is present, it is used directly.
 
-### 6. Security Notes
+### 7. Security Notes
 Tokens are short-lived (1 hour) and stored in-memory only during exchange.
 
 Private key should be stored securely and never committed to version control.
 
 Enable BRIDGE_DEBUG=true only for troubleshooting—debug logs may include sensitive info!
 
-### 7. How to Generate idp-private.pem for the OIDC Bridge
+### 8. How to Generate idp-private.pem for the OIDC Bridge
 ```bash
 # Generate private key
 openssl genrsa -out idp-private.pem 2048
@@ -131,7 +143,7 @@ openssl genrsa -out idp-private.pem 2048
 openssl rsa -in idp-private.pem -check
 ```
 
-### 8. Contributing
+### 9. Contributing
 Contributions and suggestions welcome! Please file issues or PRs for improvements.
 
 License
