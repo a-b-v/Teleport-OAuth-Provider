@@ -64,7 +64,7 @@ This ensures that Teleport includes a valid JWT token when communicating with th
 
 ---
 
-## Documentations
+## Documentation
 
 ### Environment Variables
 
@@ -146,6 +146,8 @@ openssl genrsa -out idp-private.pem 2048
 # (Optional) Check key details
 openssl rsa -in idp-private.pem -check
 ```
+### Examples
+Examples of configuration for different services using OIDC Bridge for authentication can be found in the `examples` directory.
 
 ### Contributing
 Contributions and suggestions welcome! Please file issues or PRs for improvements.
