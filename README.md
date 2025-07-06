@@ -62,7 +62,11 @@ rewrite:
 
 This ensures that Teleport includes a valid JWT token when communicating with the OIDC bridge.
 
-### 3. Environment Variables
+---
+
+## Documentations
+
+### Environment Variables
 
 ```
 ## Environment Variables
@@ -84,7 +88,7 @@ This ensures that Teleport includes a valid JWT token when communicating with th
 
 ```
 
-### 4. Authorization Code Flow
+### Authorization Code Flow
 1. Authorize Endpoint
 Client app redirects user to /authorize, providing:
 client_id, redirect_uri, state, etc.
@@ -97,7 +101,7 @@ Client exchanges code for tokens via /token.
 3. Userinfo Endpoint
 Applications can retrieve user claims (including policy) via /userinfo.
 
-### 5. API Endpoints
+### API Endpoints
 1. OIDC Discovery
 GET /.well-known/openid-configuration
 Returns OIDC provider metadata.
@@ -118,7 +122,7 @@ Exchange authorization code for tokens.
 GET/POST /userinfo
 Returns user claims extracted from the JWT.
 
-### 6. Teleport Roles → Policy Extraction
+### Teleport Roles → Policy Extraction
 Roles and traits are extracted directly from Teleport’s JWT.
 
 Policy claim is derived by:
@@ -127,14 +131,14 @@ Matching Teleport roles to the client_id (see code for details)
 
 If traits.policy is present, it is used directly.
 
-### 7. Security Notes
+### Security Notes
 Tokens are short-lived (1 hour) and stored in-memory only during exchange.
 
 Private key should be stored securely and never committed to version control.
 
 Enable BRIDGE_DEBUG=true only for troubleshooting—debug logs may include sensitive info!
 
-### 8. How to Generate idp-private.pem for the OIDC Bridge
+### How to Generate idp-private.pem for the OIDC Bridge
 ```bash
 # Generate private key
 openssl genrsa -out idp-private.pem 2048
@@ -143,7 +147,7 @@ openssl genrsa -out idp-private.pem 2048
 openssl rsa -in idp-private.pem -check
 ```
 
-### 9. Contributing
+### Contributing
 Contributions and suggestions welcome! Please file issues or PRs for improvements.
 
 License
