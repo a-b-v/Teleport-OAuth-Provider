@@ -27,6 +27,8 @@ import jwt
 from cachetools import TTLCache
 from cryptography.hazmat.primitives import serialization
 
+ALLOWED_TP_ALGS = {"RS256", "ES256"}
+
 # ──────────────────────────  Runtime configuration  ──────────────────────────
 BRIDGE_ISS         = os.getenv("BRIDGE_ISSUER",  "https://oidc-bridge.internal")
 JWKS_URI           = os.getenv("BRIDGE_JWKS_URI", f"{BRIDGE_ISS}/.well-known/jwks.json")
@@ -93,7 +95,10 @@ async def get_teleport_key(kid: str):
                 log.info(f"REQUEST TO TELEPORT: GET {TP_JWKS_URL} {r.status_code}")
             if DEBUG:
                 log.debug(f"Teleport JWKS response {r.status_code}: {r.text[:500]}")
-                log.debug(f"Full Teleport JWKS JSON: {json.dumps(r.json(), indent=2)}")
+                try:
+                    log.debug(f"Full Teleport JWKS JSON: {json.dumps(r.json(), indent=2)}")
+                except Exception:
+                    pass
             r.raise_for_status()
             jwks_data = r.json()
             if "jwks_uri" in jwks_data and "keys" not in jwks_data:
@@ -102,7 +107,10 @@ async def get_teleport_key(kid: str):
                 r = await client.get(jwks_data["jwks_uri"])
                 if DEBUG:
                     log.debug(f"Teleport JWKS response from jwks_uri {r.status_code}: {r.text[:500]}")
-                    log.debug(f"Full Teleport JWKS JSON from jwks_uri: {json.dumps(r.json(), indent=2)}")
+                    try:
+                        log.debug(f"Full Teleport JWKS JSON from jwks_uri: {json.dumps(r.json(), indent=2)}")
+                    except Exception:
+                        pass
                 r.raise_for_status()
                 jwks_data = r.json()
             if "keys" not in jwks_data or not isinstance(jwks_data["keys"], list):
@@ -111,10 +119,34 @@ async def get_teleport_key(kid: str):
                 raise HTTPException(502, "Invalid JWKS response from Teleport: missing or invalid 'keys' field")
         _jwks_cache["keys"] = {k["kid"]: k for k in jwks_data["keys"]}
         keys = _jwks_cache["keys"]
-    if kid not in keys:
+
+    jwk = keys.get(kid)
+    if not jwk:
+        # nuke cache so a retry can refresh after rotation
         _jwks_cache.pop("keys", None)
         raise HTTPException(401, "unknown kid")
-    return jwt.algorithms.RSAAlgorithm.from_jwk(keys[kid])
+
+    kty = jwk.get("kty")
+    alg = jwk.get("alg")
+    try:
+        if kty == "RSA":
+            return jwt.algorithms.RSAAlgorithm.from_jwk(jwk)
+        elif kty == "EC":
+            # Optionally sanity-check ES256 curve
+            crv = jwk.get("crv")
+            if alg and alg != "ES256":
+                # You can allow others by removing this check
+                log.warning(f"Unexpected EC alg in JWK: {alg}")
+            if crv and crv != "P-256":
+                log.warning(f"Unexpected EC curve in JWK: {crv}")
+            return jwt.algorithms.ECAlgorithm.from_jwk(jwk)
+        else:
+            # Future-proofing: you can add OKP/EdDSA here if Teleport ever ships it
+            raise HTTPException(502, f"Unsupported JWK kty from Teleport: {kty!r}")
+    except Exception as e:
+        if DEBUG:
+            log.exception("Failed to construct verification key from JWK")
+        raise HTTPException(502, f"Failed to build verification key from Teleport JWK: {e}")
 
 # ─────────────────────  In‑memory authorization code store  ───────────────────
 codes: TTLCache[str, Dict[str, Any]] = TTLCache(maxsize=10_000, ttl=120)
@@ -203,7 +235,7 @@ async def authorize(
                 log.debug(f"Failed to decode Teleport JWT: {str(e)}")
         key = await get_teleport_key(header["kid"])
         try:
-            claims = jwt.decode(tp_token, key=key, algorithms=["RS256"], issuer=TP_ISS, audience=TP_AUD)
+            claims = jwt.decode(tp_token, key=key, algorithms=list(ALLOWED_TP_ALGS), issuer=TP_ISS, audience=TP_AUD)
         except jwt.PyJWTError as e:
             if DEBUG and "Audience doesn't match" in str(e):
                 unverified_claims = jwt.decode(tp_token, options={"verify_signature": False})
